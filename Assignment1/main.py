@@ -1,5 +1,6 @@
 from pyspark.sql import SparkSession
 from shingling import Shingling
+from minhash import MinHash
 
 def run_simItems(k):
     spark = SparkSession.builder.appName("DocumentSimilarity").getOrCreate()
@@ -11,8 +12,9 @@ def run_simItems(k):
     newMap = data_rdd.map(lambda line: 
                         tuple(line.split('\t', 1))).mapValues(lambda message: Shingling(k).shingle_document(message))
 
-    for label, shingles in newMap.take(5):
-        print(f"Label: {label}, Shingles: {shingles}")
+    # for label, shingles in newMap.take(5):
+    #     print(f"Label: {label}, Shingles: {shingles}")
+    MinHash(newMap).minhash(100)
 
     spark.stop()
 
