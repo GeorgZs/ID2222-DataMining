@@ -1,6 +1,7 @@
 from pyspark.sql import SparkSession
 from shingling import Shingling
 from minhash import MinHash
+from compareSets import CompareSets
 
 def run_simItems(k):
     spark = SparkSession.builder.appName("DocumentSimilarity").getOrCreate()
@@ -15,6 +16,9 @@ def run_simItems(k):
     for label, shingles in newMap.take(5):
         print(f"Label: {label}, Shingles: {shingles}")
     # MinHash(newMap).minhash(100)
+
+    # prints 1.0 for all for now
+    print("Jaccard = ", CompareSets.jaccard_similarity(newMap.take(3)[0][1], newMap.take(4)[0][1]))
 
     spark.stop()
 
