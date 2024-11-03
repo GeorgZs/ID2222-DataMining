@@ -17,7 +17,6 @@ class Shingling:
             shingle = ' '.join(words[i:i + self.k])  
             
             #hashed_shingle = hash(shingle)  # Hash the shingle
-            print("Shingle", shingle)
-            shingles.add(shingle)
+            shingles.add(hash(shingle))
             # shingles.add(hashed_shingle)
         return shingles
