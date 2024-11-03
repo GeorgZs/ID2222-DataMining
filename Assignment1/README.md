@@ -8,3 +8,6 @@ Assignment1
 
 
 He recommends 100
+
+Dataset chosen: https://archive.ics.uci.edu/dataset/228/sms+spam+collection
+
