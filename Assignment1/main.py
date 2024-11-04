@@ -4,7 +4,7 @@ from minhash import MinHash
 from compareSets import CompareSets
 
 def run_simItems(k):
-    spark = SparkSession.builder.appName("DocumentSimilarity").getOrCreate()
+    spark = SparkSession.builder.master('local[*]').appName("DocumentSimilarity").getOrCreate()
     sc = spark.sparkContext # spark context used for sending information to the spark cluster
     data_rdd = sc.textFile("data/SMSSpamCollection.txt") # read the data file
     print("Number of lines in data: ", data_rdd.count())
