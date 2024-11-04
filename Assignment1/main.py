@@ -20,14 +20,19 @@ def run_simItems(k):
     afterShingle = datetime.now() - currTime
     print(f"Time elapsed after shingling (in seconds): {afterShingle}")
     
+    # create signature matrix using MinHash
     sig_matrix = MinHash(newMap).minhash(100)
 
     afterMinTime = datetime.now() - currTime
     print(f"Time elapsed after MinHash (in seconds): {afterMinTime}")
 
-    # compare signatures
-    #print("Jaccard Similarity of [1] and [2]", CompareSets.jaccard_similarity(set(sig_matrix[0]), set(sig_matrix[1])))
+    # compare signatures using Jaccard Similarity
+    print("Jaccard Similarity of [1] and [2]", CompareSets.jaccard_similarity(set(sig_matrix[0]), set(sig_matrix[1])))
 
+    finalTime = datetime.now() - currTime
+    print(f"Time elapsed after all functions (in seconds): {finalTime}")
+    
+    # stop the spark session
     spark.stop()
 
 if __name__ == "__main__":

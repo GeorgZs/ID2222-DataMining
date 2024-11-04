@@ -25,39 +25,59 @@ class MinHash:
         shingleList = self.shingles.collect()
 
         # find all shingle values and create total list (rows)
-        listOfShingles = set()
+        setOfShingles = set()
         for _, shingles in shingleList:
-            listOfShingles.update(shingles)
+            setOfShingles.update(shingles)
+
+        row_count = len(setOfShingles)
+        column_count = len(shingleList)
+        listOfShingles = list(setOfShingles)
 
         # create empty signature matrix with rows = number of shingles and columns = number of docs 
-        sig_matrix = np.empty((len(listOfShingles), shingleCount))
-        print(sig_matrix.shape)
+        sig_matrix = np.empty((row_count, shingleCount))
+        # print(sig_matrix.shape)
 
-        premutation = self.permute(num_hash_functions)
+        # create permutation matrix (transverse to see the correct order)
+        # columns = number of hash functions ~ 100
+        # rows = index of shingles in random order ~ 5575
+        permutation = self.permute(num_hash_functions, shingleCount)
 
-        for row in range(len(listOfShingles)): # for each row
-            print("Processing row: ", row)
-            for column in range(len(shingleList)): # for each column
+        # permuation structure
+        # | |perm1|perm2|perm3| ... until num_hash_functions
+        # |-| -   | -   | -   |
+        # | |    1|    1|    1|
+        # | |    4|    0|    9|
+        # | |    8|    1|    3|
+        # | |    3|    6|    1|
+        # .... until column_count
 
-                sig_matrix[row][column] = 0 ## IF we need to show 0 values
-                # Add 1 if shingle is in column (look at self.shinglesp[0].getSetItem(row))
+        for row in range(row_count): # for each row
+            curr_shingle = listOfShingles[row]
+            min_index = shingleCount
 
-                # shingle = ham: {set} so we need to check if row shingle is in the set, if yes we add 1
-                # then we should have a matrix with 1 and 0 values 
-
-                if list(listOfShingles)[row] in shingleList[column]:
-                    sig_matrix[row][column] = 1
-
-        print(sig_matrix)
+            for column in range(column_count): # for each column
+                # since shingle list is a tuple, we need to check if the shingle is in the list
+                if curr_shingle in shingleList[column][1]:
+                    # checks each permutation (row) for the smallest index
+                    for perm in permutation:
+                        # print("before min index", min_index)
+                        # print("perm", perm)
+                        min_index = min(min_index, perm[column])
+                        # print("after min index", min_index)
+                        # give sig matrix the smallest index of a permutation                       
+                        sig_matrix[row][column] = min_index
    
-        return
+        return sig_matrix
 
-    def permute(self, num_hash_functions):
+    def permute(self, num_hash_functions, count):
         # Implement permutation
         # we need to have different combinations 
-        permutation = np.empty((num_hash_functions, self.shingles.count()))
+        permutation = np.empty((num_hash_functions, count))
 
         for i in range(num_hash_functions):
-            permute = np.random.rand(self.shingles.count())
+            # create permutation with indexes between 0 and count
+            permute = np.random.permutation(count)
+            # add permutation to the permutation matrix
             permutation[i] = permute
+        
         return permutation
