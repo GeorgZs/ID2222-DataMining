@@ -1,3 +1,4 @@
+from datetime import datetime
 from pyspark.sql import SparkSession
 from shingling import Shingling
 from minhash import MinHash
@@ -9,16 +10,23 @@ def run_simItems(k):
     data_rdd = sc.textFile("data/SMSSpamCollection.txt") # read the data file
     print("Number of lines in data: ", data_rdd.count())
 
+    currTime = datetime.now()
+    print(f"CurrTime: {currTime}, Starting SimItems.....")
+
     # CREATE RDD of shingle sets
     newMap = data_rdd.map(lambda line: 
                         tuple(line.split('\t', 1))).mapValues(lambda message: Shingling(k).shingle_document(message))
 
-    # for label, shingles in newMap.take(5):
-    #     print(f"Label: {label}, Shingles: {shingles}\n")
-    MinHash(newMap).minhash(100)
+    afterShingle = datetime.now() - currTime
+    print(f"Time elapsed after shingling (in seconds): {afterShingle}")
+    
+    sig_matrix = MinHash(newMap).minhash(100)
 
-    # prints 1.0 for all for now
-    print("Jaccard = ", CompareSets.jaccard_similarity(newMap.take(3)[0][1], newMap.take(4)[0][1]))
+    afterMinTime = datetime.now() - currTime
+    print(f"Time elapsed after MinHash (in seconds): {afterMinTime}")
+
+    # compare signatures
+    #print("Jaccard Similarity of [1] and [2]", CompareSets.jaccard_similarity(set(sig_matrix[0]), set(sig_matrix[1])))
 
     spark.stop()
 
