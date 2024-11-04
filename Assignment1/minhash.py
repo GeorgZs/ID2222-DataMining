@@ -23,23 +23,34 @@ class MinHash:
         # create matrix with dimensions of each word as row and each shingle as column
 
         # find all shingle values and create total list (rows)
-        listOfShingles = [x[1] for x in self.shingles.collect()]
-        print(listOfShingles)
+        listOfShingles = set()
+        for _, shingles in self.shingles.collect():
+            listOfShingles.update(shingles)
+
+        # I want to create a gloabl set of shingles which will be my rows
+        # then each sentence will be the column: therefore we can see if a given sentence
+        # contains a shingle and then we assign a 1 to create the matrix
         
         # create signature matrix from shingle values (rows) and shingle sets (columns)
         sig_matrix = np.empty((len(listOfShingles), self.shingles.count()))
         print(sig_matrix.shape)
 
-        return
 
-        for row in range(len(listOfShingles)):
-            for column in range(self.shingles.count()):
-                # sig_matrix[row][column] = 0 ## IF we need to show 0 values
-                # Add 1 if shingle is in column
-                if listOfShingles[row] in self.shingles[column]:
+        for row in range(len(listOfShingles)): # for each row
+            for column in range(self.shingles.count()): # for each column
+
+                sig_matrix[row][column] = 0 ## IF we need to show 0 values
+                # Add 1 if shingle is in column (look at self.shinglesp[0].getSetItem(row))
+
+                # shingle = ham: {set} so we need to check if row shingle is in the set, if yes we add 1
+                # then we should have a matrix with 1 and 0 values 
+
+                if list(listOfShingles)[row] in self.shingles.collect()[column]:
                     sig_matrix[row][column] = 1
+
+        print(sig_matrix)
    
-        #
+        return
         # Implement minhashing
         pass
 

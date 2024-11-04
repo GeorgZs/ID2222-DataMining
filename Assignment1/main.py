@@ -13,9 +13,9 @@ def run_simItems(k):
     newMap = data_rdd.map(lambda line: 
                         tuple(line.split('\t', 1))).mapValues(lambda message: Shingling(k).shingle_document(message))
 
-    for label, shingles in newMap.take(5):
-        print(f"Label: {label}, Shingles: {shingles}")
-    # MinHash(newMap).minhash(100)
+    # for label, shingles in newMap.take(5):
+    #     print(f"Label: {label}, Shingles: {shingles}\n")
+    MinHash(newMap).minhash(100)
 
     # prints 1.0 for all for now
     print("Jaccard = ", CompareSets.jaccard_similarity(newMap.take(3)[0][1], newMap.take(4)[0][1]))
