@@ -20,30 +20,33 @@ class MinHash:
         # OR...
         # [[S1, a, 1], [S1, b, 1], [S2, a, 1], [S2, c, 1], [S3, a, 1], [S3, b, 1], [S3, c, 1], [S3, d, 1]]
 
-        # create matrix with dimensions of each word as row and each shingle as column
+        # define common vars
+        shingleCount = self.shingles.count()
+        shingleList = self.shingles.collect()
 
         # find all shingle values and create total list (rows)
         listOfShingles = set()
-        for _, shingles in self.shingles.collect():
+        for _, shingles in shingleList:
             listOfShingles.update(shingles)
 
-        sig_matrix = np.empty((len(listOfShingles), self.shingles.count()))
+        # create empty signature matrix with rows = number of shingles and columns = number of docs 
+        sig_matrix = np.empty((len(listOfShingles), shingleCount))
         print(sig_matrix.shape)
 
         premutation = self.permute(num_hash_functions)
 
-        for _, shingles in self.shingles.collect():
-            for row in shingles: # for each row
-                for column in range(self.shingles.count()): # for each column
+        for row in range(len(listOfShingles)): # for each row
+            print("Processing row: ", row)
+            for column in range(len(shingleList)): # for each column
 
-                    sig_matrix[row][column] = 0 ## IF we need to show 0 values
-                    # Add 1 if shingle is in column (look at self.shinglesp[0].getSetItem(row))
+                sig_matrix[row][column] = 0 ## IF we need to show 0 values
+                # Add 1 if shingle is in column (look at self.shinglesp[0].getSetItem(row))
 
-                    # shingle = ham: {set} so we need to check if row shingle is in the set, if yes we add 1
-                    # then we should have a matrix with 1 and 0 values 
+                # shingle = ham: {set} so we need to check if row shingle is in the set, if yes we add 1
+                # then we should have a matrix with 1 and 0 values 
 
-                    if list(listOfShingles)[row] in self.shingles.collect()[column]:
-                        sig_matrix[row][column] = 1
+                if list(listOfShingles)[row] in shingleList[column]:
+                    sig_matrix[row][column] = 1
 
         print(sig_matrix)
    
