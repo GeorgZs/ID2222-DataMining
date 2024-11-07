@@ -2,3 +2,53 @@
 # given a collection of minhash signatures (integer vectors) and a similarity threshold t, 
 # the LSH class (using banding and hashing) finds candidate pairs of 
 # signatures agreeing on at least a fraction t of their components.
+
+import numpy as np
+from collections import defaultdict
+
+class LSH:
+    def __init__(self, signature_matrix, number_bands, rows_per_band):
+        self.signature_matrix = signature_matrix
+        self.number_bands = number_bands
+        self.rows_per_band = rows_per_band
+        self.number_docs = signature_matrix.shape[1]
+
+        self.threshold = (1 / self.number_bands) ** (1 / self.rows_per_band)
+        print("Threshold is set to:", self.threshold)
+        
+
+    def compute_candidates(self):
+        candidate_pairs = set()
+
+        for band in range(self.number_bands):
+            band_buckets = defaultdict(list)
+            start_row = band * self.rows_per_band
+            end_row = start_row + self.rows_per_band
+
+            for document_index in range(self.number_docs):
+                band_signature = tuple(self.signature_matrix[start_row:end_row, document_index])
+                band_buckets[band_signature].append(document_index)
+
+        for bucket in band_buckets.values():
+            if len(bucket) > 1:
+                for i in range(len(bucket)):
+                    for j in range(i + 1, len(bucket)):
+                        candidate_pairs.add((bucket[i], bucket[j]))
+
+        final_candidates = set()
+
+        for(doc1, doc2) in candidate_pairs:
+            match_count = 0
+            for band in range(self.number_bands):
+                start_row = band * self.rows_per_band
+                end_row = start_row + self.rows_per_band
+
+                if np.array_equal(self.signature_matrix[start_row:end_row, doc1],
+                                  self.signature_matrix[start_row:end_row, doc2]):
+                    match_count += 1
+
+                similarity = match_count / self.number_bands
+                if similarity >= self.threshold:
+                    final_candidates.add((doc1, doc2))
+        
+        return final_candidates
