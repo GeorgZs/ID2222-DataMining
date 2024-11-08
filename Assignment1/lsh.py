@@ -45,8 +45,10 @@ class LSH:
 
         final_candidates = set()
 
+        # For every candidate pair we check if the similarity is above the threshold
         for(doc1, doc2) in candidate_pairs:
             match_count = 0
+            # for each band we check if the signature at the rows in the band are the same
             for band in range(self.number_bands):
                 start_row = band * self.rows_per_band
                 end_row = start_row + self.rows_per_band
@@ -55,6 +57,7 @@ class LSH:
                                   self.signature_matrix[start_row:end_row, doc2]):
                     match_count += 1
 
+                # Calculatinng the similarity lets us check if its above the threshold, else we discard it
                 similarity = match_count / self.number_bands
                 if similarity >= self.threshold:
                     final_candidates.add((doc1, doc2))
