@@ -23,7 +23,7 @@ class LSH:
         # For every band we create a bucket for the amount of rows specified
         for band in range(self.number_bands):
             band_buckets = defaultdict(list)
-            start_row = band * self.rows_per_band
+            start_row = band * self.rows_per_band # Start row of the band based on index (index starts at 0 so it has band 0, 1, index 1 with have bands 2, 3, etc.)
             end_row = start_row + self.rows_per_band
 
             # For every document, we take the signature from the start row, to the end row
