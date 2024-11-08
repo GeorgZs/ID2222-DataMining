@@ -20,15 +20,23 @@ class LSH:
     def compute_candidates(self):
         candidate_pairs = set()
 
+        # For every band we create a bucket for the amount of rows specified
         for band in range(self.number_bands):
             band_buckets = defaultdict(list)
             start_row = band * self.rows_per_band
             end_row = start_row + self.rows_per_band
 
+            # For every document, we take the signature from the start row, to the end row
+            # Then we fill up the bucket for that key/tuple. Example of the tuple: 
+            # (0, 1, 3): [2], [4] with that specfic document index
+            # because that hash happens in that document. If the band does not exist it will
+            # make a new one, otherwise it will add it to the already existing one.
             for document_index in range(self.number_docs):
                 band_signature = tuple(self.signature_matrix[start_row:end_row, document_index])
                 band_buckets[band_signature].append(document_index)
 
+        # This method goes over every bucket and just makes pairs out of the values in the dictionary
+        # which are all of the doucments that share that specific hash
         for bucket in band_buckets.values():
             if len(bucket) > 1:
                 for i in range(len(bucket)):
