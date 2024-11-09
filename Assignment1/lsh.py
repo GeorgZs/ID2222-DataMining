@@ -47,6 +47,7 @@ class LSH:
         #print("Candidate pairs: ", candidate_pairs)
         final_candidates = set()
 
+        # For every candidate pair we check if the similarity is above the threshold
         for(doc1, doc2) in candidate_pairs:
 
             similarity = CompareSignatures.compare_signatures(
