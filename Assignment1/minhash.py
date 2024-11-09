@@ -1,11 +1,15 @@
 import numpy as np
 
 class MinHash:
-    def __init__(self, shingles):
+    def __init__(self, shingles, random_seed=None):
         # Assuming `shingles` is an RDD of (doc_id, shingle_set) pairs
         self.shingles = shingles
         self.num_docs = self.shingles.count()
         self.shingle_list = self.shingles.collect()
+
+        self.random_seed = random_seed
+        if self.random_seed is not None:
+            np.random.seed(self.random_seed)
 
     def minhash(self, num_hash_functions):
         # Identify the largest shingle ID for use in hash functions

@@ -5,6 +5,7 @@
 
 import numpy as np
 from collections import defaultdict
+from compareSignatures import CompareSignatures
 
 class LSH:
     def __init__(self, signature_matrix, number_bands, rows_per_band):
@@ -35,28 +36,27 @@ class LSH:
                 band_signature = tuple(self.signature_matrix[start_row:end_row, document_index])
                 band_buckets[band_signature].append(document_index)
 
-        # This method goes over every bucket and just makes pairs out of the values in the dictionary
-        # which are all of the doucments that share that specific hash
-        for bucket in band_buckets.values():
-            if len(bucket) > 1:
-                for i in range(len(bucket)):
-                    for j in range(i + 1, len(bucket)):
-                        candidate_pairs.add((bucket[i], bucket[j]))
+            # This method goes over every bucket and just makes pairs out of the values in the dictionary
+            # which are all of the doucments that share that specific hash
+            for bucket in band_buckets.values():
+                if len(bucket) > 1:
+                    for i in range(len(bucket)):
+                        for j in range(i + 1, len(bucket)):
+                            candidate_pairs.add((bucket[i], bucket[j]))
 
+        #print("Candidate pairs: ", candidate_pairs)
         final_candidates = set()
 
         for(doc1, doc2) in candidate_pairs:
-            match_count = 0
-            for band in range(self.number_bands):
-                start_row = band * self.rows_per_band
-                end_row = start_row + self.rows_per_band
 
-                if np.array_equal(self.signature_matrix[start_row:end_row, doc1],
-                                  self.signature_matrix[start_row:end_row, doc2]):
-                    match_count += 1
+            similarity = CompareSignatures.compare_signatures(
+                CompareSignatures,
+                self.signature_matrix[:, doc1],
+                self.signature_matrix[:, doc2]
+            )
+            print("Comparing documents: ", doc1, " and ", doc2, ". Similarity of ", similarity)
 
-                similarity = match_count / self.number_bands
-                if similarity >= self.threshold:
-                    final_candidates.add((doc1, doc2))
-        
+            if similarity >= self.threshold:
+                final_candidates.add((doc1, doc2))
+
         return final_candidates

@@ -8,4 +8,6 @@ class CompareSignatures:
         # Calculate similarity of two signatures
         # For each component i, compare sig1[i] and sig2[i]
         # zip function creates a tuple of the ith elements of both lists
-        return sum([1 for i, j in zip(sig1, sig2) if i == j]) / len(sig1)
+        
+        result = sum([1 for i, j in zip(sig1, sig2) if i == j]) / len(sig1)
+        return result

@@ -15,8 +15,9 @@ class Shingling:
         for i in range(len(words) - self.k + 1):
             # Construct k-shingle as a string from shingle list ==> turn ["h","b","c"] into "h b c"
             shingle = ' '.join(words[i:i + self.k])  
-            
             #hashed_shingle = hash(shingle)  # Hash the shingle
             shingles.add(hash(shingle))
+            
             # shingles.add(hashed_shingle)
+
         return shingles

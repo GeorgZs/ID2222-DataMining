@@ -3,6 +3,7 @@ from pyspark.sql import SparkSession
 from shingling import Shingling
 from minhash import MinHash
 from compareSets import CompareSets
+from compareSignatures import CompareSignatures
 from lsh import LSH
 
 def run_simItems(k, number_bands, rows_per_band):
@@ -18,13 +19,13 @@ def run_simItems(k, number_bands, rows_per_band):
     newMap = data_rdd.map(lambda line: 
                         tuple(line.split('\t', 1))).mapValues(lambda message: Shingling(k).shingle_document(message))
 
-    print(newMap.collect())
+    #print(newMap.collect())
 
     afterShingle = datetime.now() - currTime
     print(f"Time elapsed after shingling (in seconds): {afterShingle}")
     
     # create signature matrix using MinHash
-    sig_matrix = MinHash(newMap).minhash(100)
+    sig_matrix = MinHash(newMap, random_seed=100).minhash(100)
 
     afterMinTime = datetime.now() - currTime
     print(f"Time elapsed after MinHash (in seconds): {afterMinTime}")
@@ -34,10 +35,14 @@ def run_simItems(k, number_bands, rows_per_band):
     print(f"Candidates: {candidates}")
 
     # compare signatures using Jaccard Similarity
-    print("Jaccard Similarity of [1] and [2]", CompareSets.jaccard_similarity(set(sig_matrix[0]), set(sig_matrix[1])))
+    # print("Jaccard Similarity of [1] and [2]", CompareSets.jaccard_similarity(set(sig_matrix[0]), set(sig_matrix[1])))
 
     # For approximate Jaccard similarity on MinHash signatures
-    print("Approximate Jaccard Similarity (MinHash of [1] and [2]):", CompareSets.jaccard_similarity_signatures(sig_matrix, 1, 2))
+    #sig1 = sig_matrix[:, 5193]
+    #sig2 = sig_matrix[:, 5425]
+    #print("Signature matrix 1: ", sig1)
+    #print("Signature matrix 2: ", sig2)
+    #print("Approximate Jaccard Similarity (MinHash of [1] and [2]):", CompareSignatures.compare_signatures(CompareSignatures, sig1, sig2))
 
     finalTime = datetime.now() - currTime
     print(f"Time elapsed after all functions (in seconds): {finalTime}")
@@ -48,4 +53,7 @@ def run_simItems(k, number_bands, rows_per_band):
 if __name__ == "__main__":
     # We currently use 1 document of sentences so shingle size
     # is adapted to words in the sentence
-    run_simItems(3, number_bands=10, rows_per_band=5)
+    #run_simItems(1, number_bands=20, rows_per_band=5)
+    run_simItems(1, number_bands=25, rows_per_band=4)
+    #run_simItems(1, number_bands=50, rows_per_band=2)
+    #run_simItems(1, number_bands=100, rows_per_band=1)
