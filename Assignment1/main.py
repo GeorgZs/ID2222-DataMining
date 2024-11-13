@@ -9,7 +9,7 @@ from lsh import LSH
 def run_simItems(k, number_bands, rows_per_band):
     spark = SparkSession.builder.master('local[*]').appName("DocumentSimilarity").getOrCreate()
     sc = spark.sparkContext # spark context used for sending information to the spark cluster
-    data_rdd = sc.textFile("data/spam.txt") # read the data file
+    data_rdd = sc.textFile("data/SMSSpamCollection.txt") # read the data file
     print("Number of lines in data: ", data_rdd.count())
 
     currTime = datetime.now()
@@ -57,3 +57,5 @@ if __name__ == "__main__":
     run_simItems(1, number_bands=25, rows_per_band=4)
     #run_simItems(1, number_bands=50, rows_per_band=2)
     #run_simItems(1, number_bands=100, rows_per_band=1)
+
+    # More bands = more similarity = we have less data to compare within each band
