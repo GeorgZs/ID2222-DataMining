@@ -3,7 +3,7 @@ from collections import defaultdict
 K_SIZE = 2
 MIN_SUPPORT = 2
 MIN_CONFIDENCE = 0.6
-FILENAME = "data/simple.dat"
+FILENAME = "data/T10I4D100K.dat"
 
 def main():
     baskets = load_baskets(FILENAME)
@@ -26,10 +26,10 @@ def apriori(baskets, k):
 
     current_k_size = k
     while len(frequent_itemsets) > 0:
-        candidates = generate_k_candidates(frequent_itemsets, k)
+        candidates = generate_k_candidates(frequent_itemsets, current_k_size)
         frequent_itemsets = count_support(baskets, candidates)
         if len(frequent_itemsets) > 0:
-            all_frequent_itemsets[k] = frequent_itemsets
+            all_frequent_itemsets[current_k_size] = frequent_itemsets
         
         current_k_size += 1
 
@@ -54,7 +54,6 @@ def load_baskets(filename):
             baskets.append(basket)
 
     return baskets
-
 
 def count_support(baskets, candidates):
     itemset_counts = defaultdict(int)
