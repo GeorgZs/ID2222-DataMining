@@ -80,7 +80,7 @@ def generate_association_rules(all_frequent_itemsets, item_counts):
         if count == 1:
             continue # skip singletons as no association rules exist
         for item in itemsets:
-            subsets = powerset(item)
+            subsets = powerset(item) # find all possible subsets of the current itemset
             full_item = item_counts[item] # count of the current itemset
 
             for subset in subsets:
