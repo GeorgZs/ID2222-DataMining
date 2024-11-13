@@ -1,5 +1,6 @@
 from collections import defaultdict
 from itertools import chain, combinations
+from time import time
 
 K_SIZE = 2
 MIN_SUPPORT = 2
@@ -8,12 +9,15 @@ FILENAME = "data/T10I4D100K.dat"
 FAKE_FILENAME = "data/Fake.dat"
 
 def main():
-    baskets = load_baskets(FAKE_FILENAME)
+    start = time()
+    baskets = load_baskets(FILENAME)
     all_frequent_itemsets, item_counts = apriori(baskets, K_SIZE)
 
     # generate and print association rules
     generate_association_rules(all_frequent_itemsets, item_counts)
-    
+
+    # total time required for execution
+    print("Total execution time: ", time() - start)
 
 def load_baskets(filename):
     baskets = []
@@ -45,6 +49,7 @@ def apriori(baskets, k):
             all_frequent_itemsets[current_k_size] = frequent_itemsets
         
         current_k_size += 1
+        if current_k_size == 3: break
 
     return all_frequent_itemsets, item_counts
 
