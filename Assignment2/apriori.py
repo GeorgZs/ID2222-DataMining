@@ -1,5 +1,6 @@
 from collections import defaultdict
 from itertools import chain, combinations
+from pyspark.sql import SparkSession
 from time import time
 
 K_SIZE = 2
@@ -11,6 +12,7 @@ FAKE_FILENAME = "data/Fake.dat"
 def main():
     start = time()
     baskets = load_baskets(FILENAME)
+
     all_frequent_itemsets, item_counts = apriori(baskets, K_SIZE)
 
     # generate and print association rules
@@ -20,13 +22,15 @@ def main():
     print("Total execution time: ", time() - start)
 
 def load_baskets(filename):
-    baskets = []
-    with open(filename, "r") as file:
-        for line in file:
-            basket = [int(item) for item in line.strip().split(' ')]
-            baskets.append(basket)
+    spark = SparkSession.builder.master('local[*]').appName("Apriori").getOrCreate()
+    sc = spark.sparkContext # spark context used for sending information to the spark cluster
+    data_rdd = sc.textFile(filename) # read the data file
+    print("Number of lines in data: ", data_rdd.count())
 
-    return baskets
+    baskets = data_rdd.map(lambda line: 
+                        list(line.strip().split(' '))) # each line is a list with the list of lines
+
+    return baskets.collect()
 
 def apriori(baskets, k):
     item_counts = defaultdict(int)
