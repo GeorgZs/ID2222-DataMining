@@ -7,7 +7,7 @@ K_SIZE = 2
 MIN_SUPPORT = 2
 MIN_CONFIDENCE = 0.6
 FILENAME = "data/T10I4D100K.dat"
-FAKE_FILENAME = "data/simple.dat"
+FAKE_FILENAME = "data/Fake.dat"
 
 def main():
     start = time()
@@ -18,12 +18,12 @@ def main():
     baskets = sc.textFile(FAKE_FILENAME).map(lambda line: frozenset(line.strip().split(' ')))
 
     # Run Apriori using Spark
-    all_frequent_itemsets, item_counts = apriori(baskets, K_SIZE, sc)
+    all_frequent_itemsets, candidate_counts, item_frequencies = apriori(baskets, K_SIZE, sc)
 
-    print(all_frequent_itemsets)
+    print(type(all_frequent_itemsets))
 
     # Generate and print association rules
-    generate_association_rules(all_frequent_itemsets, item_counts)
+    generate_association_rules(all_frequent_itemsets, item_frequencies, candidate_counts)
 
     print("Total execution time: ", time() - start)
 
@@ -47,13 +47,16 @@ def apriori(baskets, max_k, spark_context):
 
     while frequent_itemsets:
         # Generate k-candidates
-        broadcast_frequent = spark_context.broadcast(frequent_itemsets)  # Share frequent itemsets across workers
+        # TODO: Understand what the broadcast function does
+        broadcast_frequent = spark_context.broadcast(frequent_itemsets)
+
+        # Generate k-candidates and count their occurrences
         candidate_counts = (
             baskets.flatMap(lambda basket: [
                 candidate for candidate in generate_k_candidates(basket, broadcast_frequent.value, current_k_size)
             ])
-            .map(lambda candidate: (candidate, 1))  # Create pairs for counting
-            .reduceByKey(lambda count1, count2: count1 + count2)  # Sum up counts for each candidate
+            .map(lambda candidate: (candidate, 1))
+            .reduceByKey(lambda count1, count2: count1 + count2)
         )
         
         # Filter candidates to find frequent itemsets
@@ -72,26 +75,35 @@ def apriori(baskets, max_k, spark_context):
             break
 
     # Return all frequent itemsets and the full dictionary of counts for candidates
-    return all_frequent_itemsets, dict(candidate_counts.collect())
+    return all_frequent_itemsets, dict(candidate_counts.collect()), dict(item_frequencies.collect())
 
-
+#TODO: Add comments for the following functions
 def generate_k_candidates(basket, frequent_itemsets, k):
     basket_items = [item for item in frequent_itemsets if item.issubset(basket)]
-    return (frozenset(candidate) for candidate in combinations(basket_items, k))
+    return (frozenset(chain.from_iterable(candidate)) for candidate in combinations(basket_items, k))
 
-def generate_association_rules(all_frequent_itemsets, item_counts):
+
+def generate_association_rules(all_frequent_itemsets, item_counts, candidate_counts):
+    item_counts = item_counts | candidate_counts  # Merge the two dictionaries
+
     for count, itemsets in all_frequent_itemsets.items():
         if count == 1:
             continue  # Skip singletons
         for itemset in itemsets:
+            itemset = frozenset(chain.from_iterable(itemset)) if isinstance(next(iter(itemset)), frozenset) else itemset
             subsets = powerset(itemset)
             full_item_count = item_counts[itemset]
             for subset in subsets:
                 subset = frozenset(subset)
                 if subset in item_counts:
-                    confidence = full_item_count / item_counts[subset]
+                    subset_count = item_counts.get(subset, 1)
+                    confidence = full_item_count / subset_count if subset_count > 0 else 0
+
                     if confidence >= MIN_CONFIDENCE:
-                        print(subset, "=>", itemset - subset, "confidence:", confidence)
+                        remaining_items = itemset - subset
+                        if remaining_items:
+                            print(subset, "=>", remaining_items, "confidence:", confidence)
+
 
 def powerset(item):
     return chain.from_iterable(combinations(item, r) for r in range(1, len(item)))
