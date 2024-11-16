@@ -4,8 +4,8 @@ from itertools import chain, combinations
 from time import time
 
 K_SIZE = 2
-MIN_SUPPORT = 2
-MIN_CONFIDENCE = 0.6
+MIN_SUPPORT = 1000
+MIN_CONFIDENCE = 0.5
 FILENAME = "data/T10I4D100K.dat"
 FAKE_FILENAME = "data/Fake.dat"
 
@@ -15,12 +15,14 @@ def main():
     sc = spark.sparkContext
 
     # Load baskets as RDD
-    baskets = sc.textFile(FAKE_FILENAME).map(lambda line: frozenset(line.strip().split(' ')))
+    baskets = sc.textFile(FILENAME).map(lambda line: frozenset(line.strip().split(' ')))
 
     # Run Apriori using Spark
     all_frequent_itemsets, candidate_counts, item_frequencies = apriori(baskets, K_SIZE, sc)
 
-    print(type(all_frequent_itemsets))
+    print(all_frequent_itemsets)
+
+    #print(type(all_frequent_itemsets))
 
     # Generate and print association rules
     generate_association_rules(all_frequent_itemsets, item_frequencies, candidate_counts)
@@ -83,30 +85,40 @@ def generate_k_candidates(basket, frequent_itemsets, k):
     return (frozenset(chain.from_iterable(candidate)) for candidate in combinations(basket_items, k))
 
 
-def generate_association_rules(all_frequent_itemsets, item_counts, candidate_counts):
+def generate_association_rules(all_frequent_itemsets, item_counts, candidate_counts):    
     item_counts = item_counts | candidate_counts  # Merge the two dictionaries
 
     for count, itemsets in all_frequent_itemsets.items():
         if count == 1:
             continue  # Skip singletons
         for itemset in itemsets:
+            # Ensure the itemset is correctly formatted (flatten nested frozensets if needed)
             itemset = frozenset(chain.from_iterable(itemset)) if isinstance(next(iter(itemset)), frozenset) else itemset
-            subsets = powerset(itemset)
-            full_item_count = item_counts[itemset]
+
+            # Generate all non-empty subsets of the itemset
+            subsets = list(powerset(itemset))
+
+            # Get the full itemset count safely
+            full_item_count = item_counts.get(itemset, 0)
+
+            # Iterate over each subset and generate association rules
             for subset in subsets:
                 subset = frozenset(subset)
+
+                # Only generate rules if the subset is found in item_counts
                 if subset in item_counts:
                     subset_count = item_counts.get(subset, 1)
                     confidence = full_item_count / subset_count if subset_count > 0 else 0
 
+                    # If confidence meets the threshold, generate the rule
                     if confidence >= MIN_CONFIDENCE:
                         remaining_items = itemset - subset
                         if remaining_items:
                             print(subset, "=>", remaining_items, "confidence:", confidence)
 
-
 def powerset(item):
-    return chain.from_iterable(combinations(item, r) for r in range(1, len(item)))
+    # Generate all non-empty subsets of the itemset
+    return chain.from_iterable(combinations(item, r) for r in range(1, len(item) + 1))
 
 if __name__ == "__main__":
     main()
