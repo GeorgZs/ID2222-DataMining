@@ -49,7 +49,6 @@ def apriori(baskets, max_k, spark_context):
 
     while frequent_itemsets:
         # Generate k-candidates
-        # TODO: Understand what the broadcast function does
         broadcast_frequent = spark_context.broadcast(frequent_itemsets)
 
         # Generate k-candidates and count their occurrences
@@ -79,9 +78,11 @@ def apriori(baskets, max_k, spark_context):
     # Return all frequent itemsets and the full dictionary of counts for candidates
     return all_frequent_itemsets, dict(candidate_counts.collect()), dict(item_frequencies.collect())
 
-#TODO: Add comments for the following functions
+
 def generate_k_candidates(basket, frequent_itemsets, k):
+    # Iterate through every item in the frequent_itemsets
     basket_items = [item for item in frequent_itemsets if item.issubset(basket)]
+    # Create k-itemset candidates as frozensets using combinations to create all possible groups of size k
     return (frozenset(chain.from_iterable(candidate)) for candidate in combinations(basket_items, k))
 
 
