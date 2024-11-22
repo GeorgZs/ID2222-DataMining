@@ -41,10 +41,13 @@ def reservoir_sampling(stream, edge_reservoir_size, wedge_reservoir_size):
                     index = random.randint(0, wedge_reservoir_size - 1)
                     wedge_reservoir[index] = wedge
                     wedge_is_closed[index] = False
+        
+        # Check is_closed_by property for previous edges on newly added wedge?
 
         rho_t = wedge_is_closed.count(True) / wedge_reservoir_size
         kappa_t = 3 * rho_t
         T_t = rho_t * (2 / (edge_reservoir_size * (edge_reservoir_size - 1))) * total_wedges
+        # T_t = ((rho_t * time**2) / (edge_reservoir_size * (edge_reservoir_size - 1))) * total_wedges
 
         # Output running estimates
         print(f"Time {time}: kappa={kappa_t}, T={T_t}")
