@@ -1,24 +1,34 @@
 import random
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import split, col, expr
+from pyspark.sql.types import ArrayType, IntegerType
 
 # Questions:
 #   1. Do we wanna avoid duplicate edges?
 
-# Avoid duplicates
-# Check the duplicates first
+# Avoid duplicates 
+# Check the duplicates first ✓
 # What if an edge arrives that happens to be the same edge of the wedge
 
+# Initialize Spark session
+spark = SparkSession.builder.appName("TriangleCountingReservoirSampling").getOrCreate()
+
+
 def reservoir_sampling(stream, edge_reservoir_size, wedge_reservoir_size):
-    edge_reservoir = []
-    wedge_reservoir = []
+    edge_reservoir = set()
+    wedge_reservoir = set()
     wedge_is_closed = [False] * wedge_reservoir_size
     total_wedges = 0
-    new_wedges = []
+    new_wedges = [] # TODO: set or not??
 
     for time, edge in enumerate(stream, start=1):
-        # Check for the closed wedges
-        for i, wedge in enumerate(wedge_reservoir):
-            if is_closed_by(edge, wedge):
-                wedge_is_closed[i] = True
+        # Check whether edge is already in the reservoir to avoid duplicates
+        # TODO: oscar check if this is correct (edge vs wedge reservoir here)
+        if edge not in wedge_reservoir:
+            # Check for the closed wedges
+            for i, wedge in enumerate(wedge_reservoir):
+                if is_closed_by(edge, wedge, wedge_reservoir):
+                    wedge_is_closed[i] = True
 
         # Edge reservoir sampling
         if len(edge_reservoir) < edge_reservoir_size:
@@ -27,27 +37,35 @@ def reservoir_sampling(stream, edge_reservoir_size, wedge_reservoir_size):
         else:
             if random.random() < 1 / time:
                 index = random.randint(0, edge_reservoir_size - 1)
-                edge_reservoir[index] = edge
+                edge_reservoir.add(edge) 
                 total_wedges = update_total_wedges(edge_reservoir)
                 new_wedges = generate_new_wedges(edge, edge_reservoir)
 
         # Wedge reservoir rampling
         for wedge in new_wedges:
             if len(wedge_reservoir) < wedge_reservoir_size:
-                wedge_reservoir.append(wedge)
+                wedge_reservoir.add(wedge)
 
             else:
                 if random.random() < len(new_wedges) / total_wedges:
                     index = random.randint(0, wedge_reservoir_size - 1)
-                    wedge_reservoir[index] = wedge
+                    wedge_reservoir.add(wedge)
                     wedge_is_closed[index] = False
         
         # Check is_closed_by property for previous edges on newly added wedge?
 
+            # Make sure to re-run new wedge reservoir on previous edges
+            if len(wedge_reservoir) == wedge_reservoir_size:
+                for i, curr_edge in enumerate(edge_reservoir): # complexity ???? O(stream_size * new_wedges * edge_reservoir)
+                    if is_closed_by(curr_edge, wedge):
+                        wedge_is_closed[i] = True
+
         rho_t = wedge_is_closed.count(True) / wedge_reservoir_size
         kappa_t = 3 * rho_t
+
+        # The use of 2 guarantees accurate adjustment for the double-counting inherent in the 
+        # reservoir sampling method. Normalizes the value of T on calculation
         T_t = rho_t * (2 / (edge_reservoir_size * (edge_reservoir_size - 1))) * total_wedges
-        # T_t = ((rho_t * time**2) / (edge_reservoir_size * (edge_reservoir_size - 1))) * total_wedges
 
         # Output running estimates
         print(f"Time {time}: kappa={kappa_t}, T={T_t}")
@@ -101,3 +119,33 @@ def find_neighbors(node, edge_reservoir):
             neighbors_list.append(edge[0])
 
     return neighbors_list
+
+
+# Read streaming data
+streaming_data = spark.readStream \
+    .format("text") \
+    .option("path", "data/fake.txt") \
+    .load()
+
+# Create datafrom with column "edge" containing the edge as a tuple of integers from value split by tab space
+edges = streaming_data.withColumn("edge", split(col("value"), "\t").cast(ArrayType(IntegerType())))
+
+
+# # Apply processing
+# results = edges.withColumn(
+#     "results",
+#     expr("reservoir_sampling(monotonically_increasing_id(), edge)") ##TODO: change code to accept edge and parse them
+# )
+    # TODO: see line 136 comment
+    # # Parse the edge
+    # edge = tuple(map(int, edge_str.split("\t")))
+    # if edge in edge_reservoir:
+    #     return None  # Skip duplicate edges
+
+# # Output results to console
+# query = results.writeStream \
+#     .outputMode("append") \
+#     .format("console") \
+#     .start()
+
+# query.awaitTermination()
