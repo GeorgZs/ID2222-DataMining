@@ -3,6 +3,10 @@ import random
 # Questions:
 #   1. Do we wanna avoid duplicate edges?
 
+# Avoid duplicates
+# Check the duplicates first
+# What if an edge arrives that happens to be the same edge of the wedge
+
 def reservoir_sampling(stream, edge_reservoir_size, wedge_reservoir_size):
     edge_reservoir = []
     wedge_reservoir = []
