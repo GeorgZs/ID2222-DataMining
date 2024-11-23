@@ -1,8 +1,7 @@
 import random
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import split, col, expr
-from pyspark.sql.types import ArrayType, IntegerType
-
+from pyspark.sql.functions import split, monotonically_increasing_id, col, udf
+from pyspark.sql.types import StructType, StructField, DoubleType, IntegerType, ArrayType
 # Questions:
 #   1. Do we wanna avoid duplicate edges?
 
@@ -10,75 +9,80 @@ from pyspark.sql.types import ArrayType, IntegerType
 # Check the duplicates first ✓
 # What if an edge arrives that happens to be the same edge of the wedge
 
+# Parameters for reservoir sampling
+EDGE_RESERVOIR_SIZE = 1000
+WEDGE_RESERVOIR_SIZE = 1000
+
+edge_reservoir = set()
+wedge_reservoir = set()
+wedge_is_closed = [False] * WEDGE_RESERVOIR_SIZE
+total_wedges = 0
+new_wedges = [] # TODO: set or not??
+time = 0
+
 # Initialize Spark session
 spark = SparkSession.builder.appName("TriangleCountingReservoirSampling").getOrCreate()
 
+def process_edge(edge_str):
+    global edge_reservoir, wedge_reservoir, wedge_is_closed, total_wedges, new_wedges,time
 
-def reservoir_sampling(stream, edge_reservoir_size, wedge_reservoir_size):
-    edge_reservoir = set()
-    wedge_reservoir = set()
-    wedge_is_closed = [False] * wedge_reservoir_size
-    total_wedges = 0
-    new_wedges = [] # TODO: set or not??
+    # Parse the edge
+    edge = edge_str
+    if edge in edge_reservoir:
+        return None  # Skip duplicate edges
 
-    for time, edge in enumerate(stream, start=1):
-        # Check whether edge is already in the reservoir to avoid duplicates
-        # TODO: oscar check if this is correct (edge vs wedge reservoir here)
-        if edge not in wedge_reservoir:
-            # Check for the closed wedges
-            for i, wedge in enumerate(wedge_reservoir):
-                if is_closed_by(edge, wedge, wedge_reservoir):
-                    wedge_is_closed[i] = True
+    for i, wedge in enumerate(wedge_reservoir):
+        if is_closed_by(edge, wedge, wedge_reservoir):
+            wedge_is_closed[i] = True
 
-        # Edge reservoir sampling
-        if len(edge_reservoir) < edge_reservoir_size:
-            edge_reservoir.append(edge)
+    # Edge reservoir sampling
+    if len(edge_reservoir) < EDGE_RESERVOIR_SIZE:
+        edge_reservoir.add(edge)
+
+    else:
+        if random.random() < 1 / time:
+            edge_reservoir.add(edge) 
+            total_wedges = update_total_wedges(edge_reservoir)
+            new_wedges = generate_new_wedges(edge, edge_reservoir)
+
+    # Wedge reservoir rampling
+    for wedge in new_wedges:
+        if len(wedge_reservoir) < WEDGE_RESERVOIR_SIZE:
+            wedge_reservoir.add(wedge)
 
         else:
-            if random.random() < 1 / time:
-                index = random.randint(0, edge_reservoir_size - 1)
-                edge_reservoir.add(edge) 
-                total_wedges = update_total_wedges(edge_reservoir)
-                new_wedges = generate_new_wedges(edge, edge_reservoir)
-
-        # Wedge reservoir rampling
-        for wedge in new_wedges:
-            if len(wedge_reservoir) < wedge_reservoir_size:
+            if random.random() < len(new_wedges) / total_wedges:
+                index = random.randint(0, WEDGE_RESERVOIR_SIZE - 1)
                 wedge_reservoir.add(wedge)
-
-            else:
-                if random.random() < len(new_wedges) / total_wedges:
-                    index = random.randint(0, wedge_reservoir_size - 1)
-                    wedge_reservoir.add(wedge)
-                    wedge_is_closed[index] = False
+                wedge_is_closed[index] = False
         
         # Check is_closed_by property for previous edges on newly added wedge?
 
-            # Make sure to re-run new wedge reservoir on previous edges
-            if len(wedge_reservoir) == wedge_reservoir_size:
-                for i, curr_edge in enumerate(edge_reservoir): # complexity ???? O(stream_size * new_wedges * edge_reservoir)
-                    if is_closed_by(curr_edge, wedge):
-                        wedge_is_closed[i] = True
+        # Make sure to re-run new wedge reservoir on previous edges
+        # if len(wedge_reservoir) == WEDGE_RESERVOIR_SIZE:
+        #     for i, curr_edge in enumerate(edge_reservoir): # complexity ???? O(stream_size * new_wedges * edge_reservoir)
+        #         if is_closed_by(curr_edge, wedge):
+        #             wedge_is_closed[i] = True
 
-        rho_t = wedge_is_closed.count(True) / wedge_reservoir_size
-        kappa_t = 3 * rho_t
+    rho_t = wedge_is_closed.count(True) / WEDGE_RESERVOIR_SIZE
+    kappa_t = 3 * rho_t
 
-        # The use of 2 guarantees accurate adjustment for the double-counting inherent in the 
-        # reservoir sampling method. Normalizes the value of T on calculation
-        T_t = rho_t * (2 / (edge_reservoir_size * (edge_reservoir_size - 1))) * total_wedges
+    # The use of 2 guarantees accurate adjustment for the double-counting inherent in the 
+    # reservoir sampling method. Normalizes the value of T on calculation
+    T_t = rho_t * (2 / (EDGE_RESERVOIR_SIZE * (EDGE_RESERVOIR_SIZE - 1))) * total_wedges
 
-        # Output running estimates
-        print(f"Time {time}: kappa={kappa_t}, T={T_t}")
+    # increase time after return 
+    old_time = time
+    time += 1
+    return old_time, kappa_t, T_t
+    
                 
 
 
 def is_closed_by(edge, wedge):
     # Check whether the two vertices of the edge are part of a wedge.
     # If they are then they form a triangle.
-    if edge[0] in wedge and edge[1] in wedge:
-        return True
-    else:
-        return False
+    return edge[0] in wedge and edge[1] in wedge
 
 def update_total_wedges(edge_reservoir):
     # When a new edge is added we want to change the total number of possible wedges.
@@ -122,30 +126,32 @@ def find_neighbors(node, edge_reservoir):
 
 
 # Read streaming data
-streaming_data = spark.readStream \
-    .format("text") \
-    .option("path", "data/fake.txt") \
-    .load()
+edges = spark.read.format("text").load("./data/web-BerkStan.txt")  # Replace with your file path
 
-# Create datafrom with column "edge" containing the edge as a tuple of integers from value split by tab space
-edges = streaming_data.withColumn("edge", split(col("value"), "\t").cast(ArrayType(IntegerType())))
+# Parse edges
+edges = edges.withColumn("fromNode", split(col("value"), "\t")[0].cast("int")) \
+             .withColumn("toNode", split(col("value"), "\t")[1].cast("int")) \
+             .drop("value")  # Drop the original text column for clarity
+
+# Define the return schema for process_edge (example: time, kappa_t, T_t)
+result_schema = StructType([
+    StructField("time", IntegerType(), True),
+    StructField("kappa_t", DoubleType(), True),
+    StructField("T_t", DoubleType(), True)
+])
+
+# Register process_edge as a UDF and define result struct
+@udf(result_schema)
+def process_edge_udf(fromNode, toNode):
+    edge = (fromNode, toNode)
+    return process_edge(edge)  # Call the original process_edge function
 
 
-# # Apply processing
-# results = edges.withColumn(
-#     "results",
-#     expr("reservoir_sampling(monotonically_increasing_id(), edge)") ##TODO: change code to accept edge and parse them
-# )
-    # TODO: see line 136 comment
-    # # Parse the edge
-    # edge = tuple(map(int, edge_str.split("\t")))
-    # if edge in edge_reservoir:
-    #     return None  # Skip duplicate edges
+# Apply processing on each row of the data frame
+results = edges.withColumn(
+    "results",
+    process_edge_udf(col("fromNode"), col("toNode"))
+)
 
-# # Output results to console
-# query = results.writeStream \
-#     .outputMode("append") \
-#     .format("console") \
-#     .start()
-
-# query.awaitTermination()
+# Output results to console (in batch mode)
+results.show(truncate=False)
