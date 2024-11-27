@@ -101,6 +101,9 @@ def computeEigenvectors(laplacian_matrix, image_path):
 def normalized_eigen(k_largest_eigen):
     # Y (n x k)
     # Y = X_ij / (Sum_j (X_ij ^ 2)) ^(1/2)
+    # Normalization ensures that each dimension (eigenvector) 
+    # contributes equally to the clustering process, preventing any single 
+    # dimension from dominating due to its scale
     return k_largest_eigen / np.sqrt(np.sum(k_largest_eigen ** 2, axis = 1)).reshape((-1, 1))
 
 def main():
