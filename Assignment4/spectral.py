@@ -67,6 +67,14 @@ def laplacianMatrix(affinity_matrix):
     # I - L_sym =  D^(-1/2) * A * D^(-1/2)
     return D_inv @ affinity_matrix @ D_inv
 
+    # laplacian = diveragance of the gradient of a function
+    # encodes the structure and connectivity of the graph
+    # used for eigendecomposition to find the number of clusters (dimensionality reduction)
+    # to find clustering using eigenvalues found from the laplacian matrix
+
+    # The Laplacian matrix L has an eigenvalue 0 with the multiplicity k
+    # iff the graph has k connecgted components
+
 def computeK(eigen_values):
     # calculate the difference between the eigen values
     eigen_values_diff = np.diff(eigen_values)
@@ -91,7 +99,9 @@ def computeEigenvectors(laplacian_matrix, image_path):
     new_path = image_path + 'eigenvectors.png'
     plt.savefig(new_path)
 
-    # Get the 2nd smallest eigenvectors to get the fielder vector
+    # Get the 2nd smallest eigenvectors to get the fielder vector 
+    # (corresponding to the eigenvalue immediately after zero)
+    # sorted in ascending order to created sorted fiedler graph and show clusterings
     fiedler_vec = sorted(eigenvectors[:, -2])
     # get the k largest eigenvectors
     k_largest_eigen = eigenvectors[:, -k:]
@@ -104,6 +114,9 @@ def normalized_eigen(k_largest_eigen):
     # Normalization ensures that each dimension (eigenvector) 
     # contributes equally to the clustering process, preventing any single 
     # dimension from dominating due to its scale
+
+    # after sqrt, we have a 1D array that needs to be reshaped to from (n,) to (n, 1)
+    # for which we can then easily fit this matrix into the K_means algorithm
     return k_largest_eigen / np.sqrt(np.sum(k_largest_eigen ** 2, axis = 1)).reshape((-1, 1))
 
 def main():

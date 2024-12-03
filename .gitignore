@@ -1,3 +1,9 @@
 data/
 __pycache__/
 pics/
+.idea
+/target
+.iml
+.gitignore
+/output
+graph.png
