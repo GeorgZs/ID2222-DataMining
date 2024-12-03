@@ -9,6 +9,7 @@ def load_graph(path):
     if path == "data/example1.dat":
         graph = nx.read_edgelist(path, delimiter=",", create_using=DiGraph)
     else:
+        # read the weighted graph in example2.dat
         graph = nx.read_weighted_edgelist(path, delimiter=",", create_using=DiGraph)
 
     return graph
@@ -56,7 +57,9 @@ def affinityMatrix(graph):
     # A = N x N matrix
     # A_ii = 0
     # A_ij = exp(-||x_i - x_j||^2 / 2 * sigma^2)
-    return np.asarray(nx.adjacency_matrix(graph).todense())
+    return np.asarray(nx.adjacency_matrix(graph).todense()) 
+    # The adjacency matrix represents the connectivity of the graph.
+    # Each element A_ij is 1 if there's an edge between nodes i and j, and 0 otherwise.
 
 def laplacianMatrix(affinity_matrix):
     # calculate the diagonal matrix
@@ -82,6 +85,13 @@ def computeK(eigen_values):
     index_largest_diff = np.argmax(eigen_values_diff) + 1
     # return the number of clusters based on the eigengap heuristic.
     return len(eigen_values) - index_largest_diff
+    
+    # The eigengap heuristic suggests that the number of clusters
+    # is equal to the number of eigenvalues before the largest gap
+    # in the sorted eigenvalue sequence.
+    # We subtract the index of the largest gap from the total number
+    # of eigenvalues because we're working with the largest eigenvalues
+    # (the eigenvalues are typically sorted in ascending order).
 
 def computeEigenvectors(laplacian_matrix, image_path):
     # Compute eigenvalues and eigenvectors::
@@ -91,7 +101,9 @@ def computeEigenvectors(laplacian_matrix, image_path):
     # compute k so that we can get the k largest eigenvectors
     k = computeK(eigenvalues)
 
-    # Plot the eigenvectors up to k+2
+   # The plot shows the (k+2 since we start at 1) k+1 largest eigenvectors, which helps visualize
+    # the structure in the data and can provide insights into the number
+    # of clusters and the quality of the spectral clustering.
     plt.figure()  # Create a new figure
     for i in range(1, k+2):
         plt.plot(sorted(eigenvectors[:, -i]))
