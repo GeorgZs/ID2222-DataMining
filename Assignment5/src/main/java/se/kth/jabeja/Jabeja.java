@@ -76,7 +76,6 @@ public class Jabeja {
       if(partner==null){
         partner = findPartner(nodeId, getSample(nodeId));
       }
-
     }
 
     // swap the colors
@@ -88,7 +87,7 @@ public class Jabeja {
     }
 
     // Check page 5 of Ja-be-ja paper in lines 10-13 of Algo 1
-    //saCoolDown() 
+    saCoolDown();
   }
 
   public Node findPartner(int nodeId, Integer[] nodes){
