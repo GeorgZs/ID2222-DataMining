@@ -73,16 +73,18 @@ public class Jabeja {
     if (config.getNodeSelectionPolicy() == NodeSelectionPolicy.HYBRID
             || config.getNodeSelectionPolicy() == NodeSelectionPolicy.RANDOM) {
       // if local policy fails then randomly sample the entire graph
-      partner = findPartner(nodeId, getSample(nodeId));
+      if(partner==null){
+        partner = findPartner(nodeId, getSample(nodeId));
+      }
+
     }
 
     // swap the colors
     if(partner != null){
       int partner_color = partner.getColor();
-      partner.setColor(p_color);
-      nodep.setColor(partner_color);  
-    } else {
-      System.out.println("Partner is null!");
+      partner.setColor(nodep.getColor());
+      nodep.setColor(partner_color);
+      numberOfSwaps++;
     }
 
     // Check page 5 of Ja-be-ja paper in lines 10-13 of Algo 1
@@ -96,24 +98,22 @@ public class Jabeja {
     Node bestPartner = null;
     double highestBenefit = 0;
 
-    for(int i = 0; i < entireGraph.size(); i++){
-      Node nodeq = entireGraph.get(i);
+    for(Integer currentNodeId: nodes) {
+      Node nodeq = entireGraph.get(currentNodeId);
+      int degreePp = getDegree(nodep, nodep.getColor());
+      int degreeQq = getDegree(nodeq, nodeq.getColor());
 
-      int qq_deg = getDegree(nodeq, nodeq.getColor());
-      int pp_deg = getDegree(nodep, nodep.getColor());
+      double old_value = Math.pow(degreePp, config.getAlpha()) + Math.pow(degreeQq, config.getAlpha());
 
-      int old_sum = qq_deg + pp_deg;
+      int degree_pq = getDegree(nodep, nodeq.getColor());
+      int degree_qp = getDegree(nodeq, nodep.getColor());
 
-      int pq_deg = getDegree(nodeq, nodep.getColor());
-      int qp_deg = getDegree(nodep, nodeq.getColor());
+      double new_value = Math.pow(degree_pq, config.getAlpha()) + Math.pow(degree_qp, config.getAlpha());
 
-      int new_sum = qp_deg + pq_deg;
-
-      if((new_sum * this.T > old) && (new_sum > highestBenefit)) {
+      if(new_value * T > old_value && new_value > highestBenefit){
         bestPartner = nodeq;
-        highestBenefit = new_sum;
+        highestBenefit = new_value;
       }
-
     }
 
     return bestPartner;
