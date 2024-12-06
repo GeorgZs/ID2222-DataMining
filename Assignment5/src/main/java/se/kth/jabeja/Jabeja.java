@@ -18,7 +18,14 @@ public class Jabeja {
   private int numberOfSwaps;
   private int round;
   private float T;
+  private boolean annealing = true;
   private boolean resultFileCreated = false;
+
+  private final float MIN_T = 0.00001F;
+  private final float MAX_T = 1.0F;
+  private final Integer MAX_ROUNDS = 100;
+  private Integer currRound = 0;
+  private int annealing_round = 0;
 
   //-------------------------------------------------------------------
   public Jabeja(HashMap<Integer, Node> graph, Config config) {
@@ -27,40 +34,81 @@ public class Jabeja {
     this.round = 0;
     this.numberOfSwaps = 0;
     this.config = config;
-    this.T = config.getTemperature();
+    if (this.annealing) {
+      this.T = 1.0F;
+    } else {
+      this.T = config.getTemperature();
+    }
   }
-
 
   //-------------------------------------------------------------------
   public void startJabeja() throws IOException {
+    Node partner = null;
     for (round = 0; round < config.getRounds(); round++) {
       for (int id : entireGraph.keySet()) {
-        sampleAndSwap(id);
+        partner = sampleAndSwap(id);
       }
 
-      //one cycle for all nodes have completed.
-      //reduce the temperature
       saCoolDown();
       report();
     }
   }
 
   /**
-   * Simulated analealing cooling function
+   * Simulated annealing cooling function
+   * @condition if (annealing)
+   ** decrease T by delta until we reach min
+   ** temperature. After this, we go through MAX_ROUNDS
+   ** in order to reach the best possible global maxima.
+   ** Following this we reset variables
    */
   private void saCoolDown(){
-    // TODO for second task
-    if (T > 1)
-      T -= config.getDelta();
-    if (T < 1)
-      T = 1;
+    if(annealing) { 
+      annealing_round++;  
+      T *= config.getDelta();
+      if(T < MIN_T) {
+        T = MIN_T;
+      }
+      if(T == MIN_T){
+        currRound++;
+        if(currRound.equals(MAX_ROUNDS)){
+          //reset rounds and temp
+          currRound = 0;
+          T = 1;
+          annealing_round = 0;
+        }
+      }
+    }
+    else {
+      if (T > 1)
+        T -= config.getDelta();
+      if (T < 1)
+        T = 1;
+    }
+  }
+
+  /**
+   * Acceptance probability to measure probability of successful
+   * acceptance of swaps based on weight of temperature
+   * @param oldCost
+   * @param newCost
+   * 
+   * EXPLANATION OF BONUS: Using exponents based on the rounds completed
+   * we actually accelerate the cooling leading to faster convergence 
+   * and having an even more non-linear approach. The larger T increases,
+   * the smaller the temperature gets every round.
+   */
+  private double acceptance_probability(double oldCost, double newCost){
+    // double fraction = (newCost - oldCost) / Math.pow(T, annealing_round);
+    double fraction = (newCost - oldCost) / T; //OLD
+    return Math.exp(fraction);
   }
 
   /**
    * Sample and swap algorith at node p
    * @param nodeId
    */
-  private void sampleAndSwap(int nodeId) {
+  private Node sampleAndSwap(int nodeId) {
     Node partner = null;
     Node nodep = entireGraph.get(nodeId);
 
@@ -86,8 +134,7 @@ public class Jabeja {
       numberOfSwaps++;
     }
 
-    // Check page 5 of Ja-be-ja paper in lines 10-13 of Algo 1
-    saCoolDown();
+    return partner;
   }
 
   public Node findPartner(int nodeId, Integer[] nodes){
@@ -109,12 +156,23 @@ public class Jabeja {
 
       double new_value = Math.pow(degree_pq, config.getAlpha()) + Math.pow(degree_qp, config.getAlpha());
 
-      if(new_value * T > old_value && new_value > highestBenefit){
-        bestPartner = nodeq;
-        highestBenefit = new_value;
+      if(annealing) {
+        Random random = new Random();
+        double probability = random.nextDouble();
+        double acceptanceProbability = acceptance_probability(old_value, new_value);
+
+        if (old_value != new_value && acceptanceProbability > probability && acceptanceProbability > highestBenefit){
+          bestPartner = nodeq;
+          highestBenefit = acceptanceProbability;
+        }
+      }
+      else {
+        if(new_value * T > old_value && new_value > highestBenefit){
+          bestPartner = nodeq;
+          highestBenefit = new_value;
+        }
       }
     }
-
     return bestPartner;
   }
 
